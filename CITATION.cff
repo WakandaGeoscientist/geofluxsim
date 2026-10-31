@@ -5,7 +5,7 @@ type: software
 version: 1.0.0
 date-released: 2026-10-31
 url: "https://geofluxsim.netlify.app"
-repository-code: "https://github.com/YOUR-GITHUB-USERNAME/geofluxsim"
+repository-code: "https://github.com/wakandageo/geofluxsim"
 license: MIT
 authors:
   - family-names: Nworie
