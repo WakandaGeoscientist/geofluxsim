@@ -1,0 +1,14 @@
+# Netlify publishes this folder as a static site (no build step).
+[build]
+  publish = "."
+  command = ""
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/*.jpg"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"

@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GeoFluxSim with David — turbidity currents, deposits and physics</title>
+<meta name="description" content="Run mixed carbonate–siliciclastic turbidity currents in a 3D flume, see velocity and concentration inside the flow, read the deposit, and follow every equation live.">
+<meta property="og:title" content="GeoFluxSim with David — a turbidity-current lab in your browser">
+<meta property="og:description" content="Watch the flow, see inside it, read the deposit, and change the physics. Free, in your browser.">
+<meta property="og:image" content="https://geofluxsim.netlify.app/preview.jpg">
+<meta property="og:url" content="https://geofluxsim.netlify.app/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌊</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eef4f7; --panel:#ffffff; --ink:#14232c; --muted:#5a6b75; --line:#cfdbe2; --soft:#f3f8fa;
+  --sili:#e0a526; --carb:#1f6fb2; --total:#14232c; --front:#d62728; --vel:#0d7f8c; --water:#3b8fc4;
+  --btn:#14232c; --btn-ink:#ffffff; --accent:#1f6fb2; --bar:rgba(238,244,247,.94);
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0c1820; --panel:#132430; --ink:#e3edf2; --muted:#93a7b3; --line:#24394a; --soft:#182c3a;
+    --total:#e3edf2; --vel:#3cc2d1; --water:#5aa7e6; --btn:#e3edf2; --btn-ink:#0c1820; --accent:#5aa7e6; --bar:rgba(12,24,32,.94);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0c1820; --panel:#132430; --ink:#e3edf2; --muted:#93a7b3; --line:#24394a; --soft:#182c3a;
+  --total:#e3edf2; --vel:#3cc2d1; --water:#5aa7e6; --btn:#e3edf2; --btn-ink:#0c1820; --accent:#5aa7e6; --bar:rgba(12,24,32,.94);
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 70px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Barlow",system-ui,-apple-system,"Segoe UI",sans-serif}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bar)}
+main{max-width:1440px;margin:0 auto;padding:14px 16px 32px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 18px;margin-bottom:10px}
+h1{font:700 clamp(24px,4vw,32px)/1.1 "Barlow Semi Condensed","Barlow",sans-serif;margin:0;letter-spacing:-.01em}
+header p{margin:0;color:var(--muted);max-width:70ch}
+h2{font:600 19px/1.3 "Barlow Semi Condensed","Barlow",sans-serif;margin:0}
+h3{font:600 16px/1.3 "Barlow Semi Condensed","Barlow",sans-serif;margin:0 0 6px}
+.sect{margin:22px 0 10px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+.runbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;
+  padding:8px 12px;margin:0 -4px 12px;background:var(--bar);border:1px solid var(--line);border-radius:10px;backdrop-filter:blur(6px)}
+.runbar button{flex:0 0 96px}
+.mini{display:flex;flex-direction:column;min-width:64px}
+.mini span{font-size:12px;color:var(--muted)}
+.mini b{font:600 17px/1.15 "Barlow Semi Condensed","Barlow",sans-serif;font-variant-numeric:tabular-nums}
+.grow{flex:1 1 190px}
+.runbar .ctl{margin:0}
+@media (max-width:600px){.runbar{gap:4px 10px;padding:6px 10px}.runbar button{flex:0 0 72px;padding:6px 8px}.mini{min-width:52px}.mini b{font-size:15px}.runbar .grow{flex:1 1 140px}.runbar .ctl label{font-size:12px}}
+.params summary{display:flex;align-items:baseline;gap:12px;cursor:pointer;list-style:none}
+.params summary::-webkit-details-marker{display:none}
+.params summary::before{content:"▾";color:var(--muted);transition:transform .15s}
+.params:not([open]) summary::before{transform:rotate(-90deg)}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:12px 18px;margin-top:10px}
+.group{background:var(--soft);border-radius:8px;padding:10px 12px}
+.group h3{color:var(--ink)}
+.view{margin-top:16px;padding:0;overflow:hidden}
+.canvaswrap{position:relative}
+#gl{display:block;width:100%;height:clamp(300px,44vw,560px);touch-action:none;cursor:grab;background:#5c8fae}
+#gl:active{cursor:grabbing}
+.hint{position:absolute;right:12px;top:10px;font-size:12px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.cbar{position:absolute;left:12px;bottom:12px;display:flex;align-items:center;gap:6px;padding:5px 9px;border-radius:6px;background:rgba(255,255,255,.88);color:#14232c;font-size:12px}
+.cbar[hidden]{display:none}
+.cbar i{display:inline-block;width:110px;height:10px;border-radius:2px}
+.cbar em{font-style:normal;color:#5a6b75;margin-left:4px}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;padding:10px 14px;border-top:1px solid var(--line)}
+.tgroup{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.tgroup>span{font-size:13px;color:var(--muted)}
+.tgroup .ctl{margin:0;min-width:220px;flex:1}
+.check{display:inline-flex;align-items:center;gap:5px;font-size:14px;cursor:pointer}
+.chips{display:inline-flex;flex-wrap:wrap;gap:4px}
+.chips button{font-size:13px;padding:4px 10px;border-radius:6px;background:transparent;color:var(--ink);border:1px solid var(--line)}
+.chips button[aria-pressed="true"]{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.span2{grid-column:span 2}
+.span-all{grid-column:1/-1}
+@media (max-width:700px){.span2{grid-column:auto}}
+.grid canvas{display:block;width:100%;height:230px}
+#secChart{height:270px}
+#physSvg+.note{margin-top:4px}
+.span2 #wsChart{height:330px}
+.legend{display:flex;gap:4px 14px;font-size:13px;color:var(--muted);margin-top:4px;flex-wrap:wrap}
+.legend i{display:inline-block;width:14px;height:3px;vertical-align:4px;margin-right:5px}
+.legend i.sq{height:12px;width:12px;border-radius:2px;vertical-align:-1px}
+.legend i.grad{width:60px;height:10px;vertical-align:0;border-radius:2px}
+.head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.head h3{margin:0;margin-right:auto}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px 12px;margin-top:10px;font-size:14px}
+.stats div{background:var(--soft);border-radius:8px;padding:7px 10px}
+.stats span{display:block;color:var(--muted);font-size:13px}
+.stats b{font:600 17px/1.2 "Barlow Semi Condensed","Barlow",sans-serif;font-variant-numeric:tabular-nums}
+button{font:600 15px "Barlow",sans-serif;border-radius:8px;padding:8px 14px;cursor:pointer;border:1px solid var(--btn)}
+#play{background:var(--btn);color:var(--btn-ink)}
+#reset{background:transparent;color:var(--ink)}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ctl{margin:0 0 9px}
+.ctl label{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.ctl output{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+input[type=range]{width:100%;accent-color:var(--accent);margin:2px 0 0}
+select{width:100%;font:inherit;padding:6px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);margin-top:3px}
+.note{font-size:13px;color:var(--muted);margin:6px 0 0}
+#physSvg{width:100%;height:auto;display:block}
+.eq{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}
+.eq div{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:2px 10px;padding:8px 10px;background:var(--soft);border-radius:8px;align-items:baseline}
+.eq .what{font-weight:600}
+.eq .f{font-style:italic;color:var(--muted);grid-column:1}
+.eq .v{grid-column:2;grid-row:1 / span 2;text-align:right;font:600 16px/1.3 "Barlow Semi Condensed","Barlow",sans-serif;font-variant-numeric:tabular-nums}
+.eq .v small{display:block;font:400 12px "Barlow",sans-serif;color:var(--muted)}
+.about{margin-top:18px}
+.about summary{cursor:pointer;font-weight:600}
+.about p{max-width:80ch;color:var(--muted)}
+#nogl{display:none;padding:40px 16px;text-align:center;color:#fff;background:#5c8fae}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>GeoFluxSim with David</h1>
+  <p>Set the sediment, fluid and flow, press Play, and watch a mixed carbonate–siliciclastic turbidity current, its velocity and concentration, and the deposit it leaves.</p>
+</header>
+
+<div class="runbar" role="region" aria-label="Run controls">
+  <button id="play" type="button">Play</button>
+  <button id="reset" type="button">Reset</button>
+  <div class="mini"><span>Time</span><b id="r-t">0.0 s</b></div>
+  <div class="mini"><span>Front</span><b id="r-x">0.00 m</b></div>
+  <div class="mini"><span>Deposited</span><b id="r-d">0%</b></div>
+  <div id="ctl-probe" class="grow"></div>
+  <div id="ctl-speed" class="grow"></div>
+</div>
+
+<details class="panel params" open>
+  <summary><h2>Parameters</h2><span class="note">Changing one restarts the run.</span></summary>
+  <div class="pgrid">
+    <div class="group"><h3>Siliciclastic sediment</h3><div id="ctl-sili"></div>
+      <div class="ctl"><label for="shape_s">Grain shape</label><select id="shape_s"></select></div></div>
+    <div class="group"><h3>Carbonate sediment</h3><div id="ctl-carb"></div>
+      <div class="ctl"><label for="shape_c">Grain shape</label><select id="shape_c"></select></div></div>
+    <div class="group"><h3>Mixture</h3><div id="ctl-mix"></div></div>
+    <div class="group"><h3>Fluid</h3><div id="ctl-fluid"></div></div>
+    <div class="group"><h3>Flow and flume</h3><div id="ctl-flow"></div></div>
+    <div class="group"><h3>Model coefficients</h3><div id="ctl-coef"></div></div>
+  </div>
+</details>
+
+<section class="panel view" aria-label="3D view">
+  <div class="canvaswrap">
+    <canvas id="gl" aria-label="3D view of the flow and its deposit in the flume"></canvas>
+    <div id="nogl">This browser can't run WebGL, so the 3D view is unavailable. The plots still work.</div>
+    <div class="cbar" id="cbar" hidden><span id="cbar-lo"></span><i id="cbar-grad"></i><span id="cbar-hi"></span><em id="cbar-name"></em></div>
+    <div class="hint" id="hint"></div>
+  </div>
+  <div class="toolbar">
+    <div class="tgroup"><span>Camera</span>
+      <div class="chips" id="camChips">
+        <button type="button" data-cam="overview" aria-pressed="true">3D overview</button>
+        <button type="button" data-cam="side" aria-pressed="false">Side wall</button>
+        <button type="button" data-cam="probe" aria-pressed="false">Probe camera</button>
+      </div></div>
+    <div class="tgroup"><span>Show the flow as</span>
+      <div class="chips" id="flowChips">
+        <button type="button" data-fm="real" aria-pressed="true">Realistic</button>
+        <button type="button" data-fm="conc" aria-pressed="false">Concentration</button>
+        <button type="button" data-fm="vel" aria-pressed="false">Velocity</button>
+      </div></div>
+    <div class="tgroup"><span>Layers</span>
+      <label class="check"><input type="checkbox" id="showFlow" checked> Flow</label>
+      <label class="check"><input type="checkbox" id="showDep" checked> Deposit</label></div>
+    <div class="tgroup grow" id="ctl-disp"></div>
+  </div>
+</section>
+
+<h2 class="sect">Flow at the probe</h2>
+<div class="grid">
+  <div class="panel"><h3>Velocity profile</h3><canvas id="velChart"></canvas>
+    <div class="legend"><span><i style="background:var(--vel)"></i>Now</span><span><i style="background:var(--vel);opacity:.35"></i>Every 2 s earlier</span></div></div>
+  <div class="panel"><h3>Concentration profile</h3><canvas id="concChart"></canvas>
+    <div class="legend"><span><i style="background:var(--total)"></i>Total</span><span><i style="background:var(--sili)"></i>Siliciclastic</span><span><i style="background:var(--carb)"></i>Carbonate</span></div></div>
+  <div class="panel"><h3>Front position over time</h3><canvas id="frontChart"></canvas>
+    <div class="legend"><span id="r-u"></span><span id="r-h"></span></div></div>
+  <div class="panel"><h3>Sediment budget over time</h3><canvas id="budChart"></canvas>
+    <div class="legend"><span><i style="background:var(--water)"></i>In suspension</span><span><i style="background:var(--sili)"></i>Deposited</span><span><i style="background:var(--front)"></i>Bypassed (<b id="r-b">0%</b>)</span></div></div>
+</div>
+
+<h2 class="sect">Deposits</h2>
+<div class="grid">
+  <div class="panel span2">
+    <div class="head"><h3>Deposit cross-section along the flume</h3>
+      <div class="chips" id="depChips" role="group" aria-label="Deposit colours">
+        <button type="button" data-mode="comp" aria-pressed="true">Composition</button>
+        <button type="button" data-mode="size" aria-pressed="false">Grain size</button>
+      </div></div>
+    <canvas id="secChart"></canvas>
+    <div class="legend" id="secLegend"></div>
+    <div class="stats" id="depStats"></div>
+  </div>
+  <div class="panel"><h3>Core at the probe</h3><canvas id="coreChart"></canvas>
+    <div class="legend"><span><i style="background:var(--vel)"></i>Mean grain size</span><span><i style="background:var(--carb)"></i>Carbonate share</span></div></div>
+  <div class="panel"><h3>Downstream distribution</h3><canvas id="distChart"></canvas>
+    <div class="legend"><span><i class="sq" style="background:var(--sili)"></i>Siliciclastic</span><span><i class="sq" style="background:var(--carb)"></i>Carbonate</span><span><i style="background:var(--vel)"></i>Mean grain size</span></div></div>
+</div>
+
+<h2 class="sect">Physics at the probe</h2>
+<div class="grid">
+  <div class="panel span2"><h3>Forces and fluxes, live</h3>
+    <svg id="physSvg" viewBox="0 0 520 300" role="img" aria-label="Diagram of the forces and sediment fluxes acting on the current at the probe"></svg>
+    <p class="note">Arrow lengths scale with the live values: momentum terms against each other, mass fluxes against each other.</p></div>
+  <div class="panel span2"><h3>Settling velocity vs grain size</h3><canvas id="wsChart"></canvas>
+    <div class="legend"><span><i style="background:var(--sili)"></i>Siliciclastic</span><span><i style="background:var(--carb)"></i>Carbonate</span><span><i style="background:var(--muted)"></i>Stokes</span></div></div>
+  <div class="panel span-all"><h3>How each equation is applied</h3><div class="eq" id="eqList"></div></div>
+</div>
+
+<details class="about">
+  <summary>How the model works</summary>
+  <p>The current is a layer-averaged gravity flow (Parker et al., 1986). It carries six grain classes: siliciclastic and carbonate, each split into fine, median and coarse sizes set by the sorting. It entrains ambient water, is driven downslope by its excess density, and loses momentum to bed friction. Each class settles at its own Ferguson &amp; Church (2004) velocity, using the grain density, shape constants and the water's viscosity at the chosen temperature, with Richardson–Zaki hindered settling at high concentration.</p>
+  <p>Velocity and concentration inside the current are rebuilt from the layer state. Velocity peaks at 20% of the current thickness, with a power law below and a Gaussian decay above (after Altinakar et al., 1996). Concentration decays exponentially upward from a near-bed value set by the near-bed concentration ratio. In the Concentration and Velocity views, the near half of the current is drawn as coloured fog and the centre line of the flume is cut open as a coloured slice, with contour lines and the profile at the probe drawn on it in white.</p>
+  <p>Settled sediment is stored in 1.5-second layers, so the deposit keeps its internal stratigraphy. Dark lines every 7.5 s are time lines. Deposit colours are stretched to the range present in the deposit.</p>
+</details>
+</main>
+
+<script>
+(() => {
+"use strict";
+/* ================= physics ================= */
+const G=9.81, KAPPA=0.41, HIND=4.65, H_MIN=1e-4, EPS_H=1e-3, CFL=0.4, ETA_M=0.2, LAYER_DT=1.5, NK=6, BW=[0.25,0.5,0.25];
+const SH_S={"Rounded quartz":[18,1.0],"Angular quartz":[20,1.2],"Platy, mica-rich":[24,1.5]};
+const SH_C={"Ooids / peloids (near-spherical)":[18,0.6],"Bioclastic fragments (angular)":[20,1.2],"Plates & rods (skeletal)":[24,1.5]};
+const P={L:8,W:0.6,nx:240,t_max:90,
+  D_s:60,rho_s:2650,shape_s:"Rounded quartz",
+  D_c:60,rho_c:2300,shape_c:"Bioclastic fragments (angular)",
+  C0:5,fc:50,sort:1.6,
+  T_w:20,rho_a:1000,
+  slope:3,U0:0.2,h0:0.08,T_in:20,
+  Cd:0.004,ea:0.075,r0:1.6,por:0.4};
+const V={speed:0.25,probe:3.0,exag:5,mode:"comp",fm:"real",showDep:true,showFlow:true};
+
+const nuWater=T=>1.79e-6/(1+0.03368*T+0.000221*T*T);
+function wsFC(Dum,rho,C1,C2,nu,rhoA){const D=Dum*1e-6,R=(rho-rhoA)/rhoA;if(R<=0)return 0;return R*G*D*D/(C1*nu+Math.sqrt(0.75*C2*R*G*D*D*D));}
+function wsStokes(Dum,rho,nu,rhoA){const D=Dum*1e-6,R=(rho-rhoA)/rhoA;return Math.max(R,0)*G*D*D/(18*nu);}
+const vel=(h,q)=>{const h2=h*h;return 2*h*q/(h2+Math.max(h2,EPS_H*EPS_H));};
+function profileK(r0){let k=1;for(let i=0;i<40;i++){const f=k/(1-Math.exp(-k))-r0,d=(1-Math.exp(-k)-k*Math.exp(-k))/Math.pow(1-Math.exp(-k),2);k-=f/d;k=Math.max(k,1e-3);}return k;}
+
+const uShapeRaw=e=>e<=ETA_M?Math.pow(Math.max(e,0)/ETA_M,1/6):Math.exp(-1.5*Math.pow((e-ETA_M)/(1-ETA_M),2));
+const U_NORM=(()=>{let s=0,n=4000,de=3/n;for(let i=0;i<n;i++)s+=uShapeRaw((i+0.5)*de)*de;return s;})();
+const uShape=e=>uShapeRaw(e)/U_NORM;
+
+let M;
+function classes(){
+  const out=[];
+  [[P.D_s,P.rho_s,SH_S[P.shape_s],1-P.fc/100],[P.D_c,P.rho_c,SH_C[P.shape_c],P.fc/100]].forEach(([D,rho,sh,f],comp)=>{
+    for(let b=0;b<3;b++)out.push({comp,D:D*Math.pow(P.sort,b-1),rho,sh,frac:f*BW[b]});
+  });
+  return out;
+}
+function makeModel(){
+  const nx=P.nx, dx=P.L/nx, x=new Float64Array(nx), zb=new Float64Array(nx), S=P.slope/100;
+  for(let i=0;i<nx;i++){x[i]=(i+0.5)*dx;zb[i]=S*(P.L-x[i]);}
+  const cl=classes(), nu=nuWater(P.T_w), kp=profileK(P.r0);
+  const arr=n=>cl.map(()=>new Float64Array(n));
+  M={nx,dx,x,zb,S,t:0,front:0,done:false,phase:0,cl,nu,kp,ap:kp/(1-Math.exp(-kp)),
+    R:cl.map(c=>(c.rho-P.rho_a)/P.rho_a),
+    ws0:cl.map(c=>wsFC(c.D,c.rho,c.sh[0],c.sh[1],nu,P.rho_a)),
+    Cin:cl.map(c=>P.C0/100*c.frac),
+    h:new Float64Array(nx).fill(H_MIN),q:new Float64Array(nx),m:arr(nx),dep:arr(nx),layers:[],
+    inj:0,exit:0,uRun:P.U0,th:[0],xf:[0],ghosts:[],nextGhost:2,bud:[{t:0,s:0,d:0,e:0}],
+    hE:new Float64Array(nx+2),qE:new Float64Array(nx+2),mE:arr(nx+2),
+    fh:new Float64Array(nx+1),fq:new Float64Array(nx+1),fm:arr(nx+1),
+    c:new Float64Array(nx+2),U:new Float64Array(nx+2),BH:new Float64Array(nx+2),a:new Float64Array(NK)};
+  M.lnDmin=Math.log(Math.min(...cl.map(c=>c.D)));M.lnDmax=Math.log(Math.max(...cl.map(c=>c.D)));
+}
+const CinTot=()=>M.Cin.reduce((a,b)=>a+b,0);
+
+function step(){
+  const {nx,dx,h,q,m,R,S,hE,qE,mE,fh,fq,fm,c,U,BH,a}=M;
+  const inflow=M.t<P.T_in;
+  if(inflow){hE[0]=P.h0;qE[0]=P.h0*P.U0;for(let k=0;k<NK;k++)mE[k][0]=P.h0*M.Cin[k];}
+  else{hE[0]=h[0];qE[0]=-q[0];for(let k=0;k<NK;k++)mE[k][0]=m[k][0];}
+  for(let i=0;i<nx;i++){hE[i+1]=h[i];qE[i+1]=q[i];}
+  for(let k=0;k<NK;k++){const mk=m[k],ek=mE[k];for(let i=0;i<nx;i++)ek[i+1]=mk[i];ek[nx+1]=mk[nx-1];}
+  hE[nx+1]=h[nx-1];qE[nx+1]=Math.max(q[nx-1],0);
+  let cmax=1e-3;
+  for(let i=0;i<nx+2;i++){let b=0;for(let k=0;k<NK;k++)b+=R[k]*mE[k][i];BH[i]=G*b;U[i]=vel(hE[i],qE[i]);
+    c[i]=Math.abs(U[i])+Math.sqrt(Math.max(BH[i],0));if(c[i]>cmax)cmax=c[i];}
+  for(let i=0;i<nx+1;i++){
+    const s=Math.max(c[i],c[i+1]);
+    fh[i]=0.5*(qE[i]+qE[i+1])-0.5*s*(hE[i+1]-hE[i]);
+    fq[i]=0.5*(qE[i]*U[i]+0.5*BH[i]*hE[i]+qE[i+1]*U[i+1]+0.5*BH[i+1]*hE[i+1])-0.5*s*(qE[i+1]-qE[i]);
+    for(let k=0;k<NK;k++){const e=mE[k];fm[k][i]=0.5*(U[i]*e[i]+U[i+1]*e[i+1])-0.5*s*(e[i+1]-e[i]);}
+  }
+  const dt=Math.min(CFL*dx/cmax,0.05), r=dt/dx;
+  for(let k=0;k<NK;k++){M.inj+=fm[k][0]*dt;M.exit+=Math.max(fm[k][nx],0)*dt;}
+  const li=Math.floor(M.t/LAYER_DT);while(M.layers.length<=li)M.layers.push(new Float32Array(NK*nx));
+  const lay=M.layers[li];
+  const thr=1e-3*CinTot()*P.h0; let fi=-1;
+  for(let i=0;i<nx;i++){
+    let hn=Math.max(h[i]-r*(fh[i+1]-fh[i]),H_MIN), qn=q[i]-r*(fq[i+1]-fq[i]);
+    let bh=0,mt=0;
+    for(let k=0;k<NK;k++){a[k]=Math.max(m[k][i]-r*(fm[k][i+1]-fm[k][i]),0);bh+=R[k]*a[k];mt+=a[k];}
+    bh*=G;
+    const u=vel(hn,qn), Ri=Math.min(bh/Math.max(u*u,1e-10),1e3);
+    hn+=P.ea/Math.sqrt(1+718*Math.pow(Ri,2.4))*Math.abs(u)*dt;
+    qn+=bh*S*dt; qn/=1+dt*P.Cd*Math.abs(u)/hn;
+    const Ct=Math.min(Math.max(mt/hn,0),0.6), hind=Math.pow(1-Ct,HIND);
+    let tot=0;
+    for(let k=0;k<NK;k++){
+      const n=a[k]*Math.exp(-P.r0*M.ws0[k]*hind*dt/hn), d=a[k]-n;
+      M.dep[k][i]+=d; lay[k*nx+i]+=d; m[k][i]=Math.min(n,0.5*hn); tot+=m[k][i];
+    }
+    h[i]=hn;q[i]=qn;
+    if(tot>thr) fi=i;
+  }
+  M.front=fi<0?0:Math.min(M.x[fi]+0.5*dx,P.L);
+  M.t+=dt; if(M.t>=P.t_max) M.done=true;
+}
+function suspended(){let s=0;for(let k=0;k<NK;k++)for(let i=0;i<M.nx;i++)s+=M.m[k][i];return s*M.dx;}
+function deposited(){let s=0;for(let k=0;k<NK;k++)for(let i=0;i<M.nx;i++)s+=M.dep[k][i];return s*M.dx;}
+function advance(sec){
+  const end=M.t+sec;while(M.t<end&&!M.done)step();
+  M.th.push(M.t);M.xf.push(M.front);
+  const thr=1e-3*CinTot();let su=0,n=0;
+  for(let i=0;i<M.nx;i++){let mt=0;for(let k=0;k<NK;k++)mt+=M.m[k][i];if(mt/M.h[i]>thr){su+=vel(M.h[i],M.q[i]);n++;}}
+  M.phase+=(n?su/n:0.15)*sec;
+  for(let i=0;i<M.nx;i++){let mt=0;for(let k=0;k<NK;k++)mt+=M.m[k][i];if(mt/M.h[i]>thr)M.uRun=Math.max(M.uRun,Math.abs(vel(M.h[i],M.q[i])));}
+  const inj=Math.max(M.inj,1e-12);M.bud.push({t:M.t,s:100*suspended()/inj,d:100*deposited()/inj,e:100*M.exit/inj});
+  if(M.t>=M.nextGhost){M.ghosts.push(sampleProbe());if(M.ghosts.length>6)M.ghosts.shift();M.nextGhost+=2;}
+}
+function frontSpeed(){const n=M.th.length;if(n<4)return 0;let st=0,sx=0,stt=0,stx=0;
+  for(let k=n-4;k<n;k++){st+=M.th[k];sx+=M.xf[k];stt+=M.th[k]*M.th[k];stx+=M.th[k]*M.xf[k];}
+  const d=4*stt-st*st;return d>0?(4*stx-st*sx)/d:0;}
+function interp(arr,xp){const f=Math.min(Math.max(xp/M.dx-0.5,0),M.nx-1.001),i=Math.floor(f),w=f-i;return arr[i]*(1-w)+arr[i+1]*w;}
+function sampleProbe(xp=V.probe){
+  const h=interp(M.h,xp),q=interp(M.q,xp),C=M.m.map(a=>interp(a,xp)/h);
+  let Cs=0,Cc=0;C.forEach((v,k)=>{if(M.cl[k].comp)Cc+=v;else Cs+=v;});
+  return {h,U:vel(h,q),C,Cs,Cc,Ct:Cs+Cc};
+}
+
+/* ---- physics terms at the probe (what each equation contributes right now) ---- */
+function physics(){
+  const pr=sampleProbe(), i=Math.min(Math.max(Math.round(V.probe/M.dx-0.5),1),M.nx-2);
+  const B=pr.C.reduce((s,c,k)=>s+M.R[k]*c,0), gp=G*B, h=pr.h, U=pr.U;
+  const pres=j=>{let b=0;for(let k=0;k<NK;k++)b+=M.R[k]*M.m[k][j];return 0.5*G*b*M.h[j];};   // ½ g' h²
+  const dPdx=(pres(i+1)-pres(i-1))/(2*M.dx);
+  const Ri=gp*h/Math.max(U*U,1e-10), ew=P.ea/Math.sqrt(1+718*Math.pow(Math.min(Ri,1e3),2.4));
+  const hind=Math.pow(1-Math.min(pr.Ct,0.6),HIND);
+  const wsH=M.ws0.map(w=>w*hind);
+  const depS=pr.C.reduce((s,c,k)=>s+(M.cl[k].comp?0:P.r0*wsH[k]*c),0), depC=pr.C.reduce((s,c,k)=>s+(M.cl[k].comp?P.r0*wsH[k]*c:0),0);
+  const us=Math.sqrt(P.Cd)*Math.abs(U);
+  const wsMed=[M.ws0[1],M.ws0[4]];
+  return {pr,B,gp,h,U,grav:gp*h*M.S,press:-dPdx,fric:-P.Cd*U*Math.abs(U),entr:-ew*Math.abs(U)*U,ew,Ri,
+    Fr:Math.abs(U)/Math.sqrt(Math.max(gp*h,1e-12)),Re:Math.abs(U)*h/M.nu,hind,depS,depC,us,
+    rouse:wsMed.map(w=>w*hind/(KAPPA*Math.max(us,1e-6))),
+    rep:[1,4].map(k=>M.ws0[k]*M.cl[k].D*1e-6/M.nu),
+    active:h>0.003&&pr.Ct>1e-4};
+}
+
+/* ---- deposit stratigraphy: section texture (columns = cells, rows = height) ---- */
+const NR=128;
+const SEC={buf:null,thick:null,dmax:0.01,mmS:null,mmC:null,meanD:null,topCol:null};
+const COL_S=[224,165,38],COL_MID=[238,232,216],COL_C=[31,111,178],FINE=[244,234,206],COARSE=[112,66,28];
+const CR={cf0:0,cf1:1,d0:0,d1:1};      // colour stretch: this deposit's own range
+function depColor(cf,lnD){
+  if(V.mode==="comp"){const t=CR.cf1>CR.cf0+0.02?Math.min(Math.max((cf-CR.cf0)/(CR.cf1-CR.cf0),0),1):Math.min(Math.max(cf,0),1);
+    return t<0.5?COL_S.map((v,j)=>v+(COL_MID[j]-v)*t*2):COL_MID.map((v,j)=>v+(COL_C[j]-v)*(t-0.5)*2);}
+  const t=CR.d1>CR.d0+1e-3?Math.min(Math.max((lnD-CR.d0)/(CR.d1-CR.d0),0),1):0.5;
+  return FINE.map((v,j)=>v+(COARSE[j]-v)*t);
+}
+function layerStats(l,i){
+  const L=M.layers[l],nx=M.nx;let v=0,vc=0,lw=0;
+  for(let k=0;k<NK;k++){const d=L[k*nx+i];v+=d;if(M.cl[k].comp)vc+=d;lw+=d*Math.log(M.cl[k].D);}
+  return {v,cf:v>0?vc/v:0,lnD:v>0?lw/v:0};
+}
+function buildSection(){
+  const nx=M.nx,mmf=1e3/(1-P.por),NL=M.layers.length;
+  if(!SEC.buf||SEC.buf.length!==nx*NR*4){SEC.buf=new Uint8Array(nx*NR*4);SEC.thick=new Float64Array(nx);SEC.mmS=new Float64Array(nx);SEC.mmC=new Float64Array(nx);SEC.meanD=new Float64Array(nx);SEC.topCol=new Uint8Array(nx*3);}
+  let dmax=0;
+  for(let i=0;i<nx;i++){let s=0,c=0,lw=0;for(let k=0;k<NK;k++){const d=M.dep[k][i];if(M.cl[k].comp)c+=d;else s+=d;lw+=d*Math.log(M.cl[k].D);}
+    SEC.mmS[i]=s*mmf;SEC.mmC[i]=c*mmf;SEC.thick[i]=(s+c)*mmf;SEC.meanD[i]=s+c>0?Math.exp(lw/(s+c)):NaN;dmax=Math.max(dmax,SEC.thick[i]);}
+  SEC.dmax=Math.max(dmax,0.01);
+  // pass 1: layer statistics and the colour range actually present in the deposit
+  const stats=new Array(nx);let vmax=0;
+  for(let i=0;i<nx;i++){stats[i]=[];for(let l=0;l<NL;l++){const st=layerStats(l,i);stats[i].push(st);vmax=Math.max(vmax,st.v);}}
+  CR.cf0=1;CR.cf1=0;CR.d0=1e9;CR.d1=-1e9;
+  for(let i=0;i<nx;i++)for(let l=0;l<NL;l++){const st=stats[i][l];if(st.v>1e-3*vmax){CR.cf0=Math.min(CR.cf0,st.cf);CR.cf1=Math.max(CR.cf1,st.cf);CR.d0=Math.min(CR.d0,st.lnD);CR.d1=Math.max(CR.d1,st.lnD);}}
+  if(CR.cf0>CR.cf1){CR.cf0=0;CR.cf1=1;CR.d0=M.lnDmin;CR.d1=M.lnDmax;}
+  const rowH=SEC.dmax/NR, buf=SEC.buf, cum=new Float64Array(NL);
+  for(let i=0;i<nx;i++){
+    const st=stats[i];
+    let c=0;for(let l=0;l<NL;l++){c+=st[l].v*mmf;cum[l]=c;}
+    let l=0,lt=-1;
+    for(let q=NL-1;q>=0;q--)if(st[q].v>0){lt=q;break;}
+    const tc=lt>=0?depColor(st[lt].cf,st[lt].lnD):[90,92,93];
+    SEC.topCol[i*3]=tc[0];SEC.topCol[i*3+1]=tc[1];SEC.topCol[i*3+2]=tc[2];
+    for(let j=0;j<NR;j++){
+      const hgt=(j+0.5)*rowH,o=(j*nx+i)*4;
+      if(hgt>SEC.thick[i]||NL===0){buf[o]=tc[0];buf[o+1]=tc[1];buf[o+2]=tc[2];buf[o+3]=0;continue;}
+      while(l<NL-1&&cum[l]<hgt)l++;
+      let col=depColor(st[l].cf,st[l].lnD);
+      const timeLine=l%5===4&&Math.abs(hgt-cum[l])<rowH*0.9&&cum[l]<SEC.thick[i]-rowH;
+      if(timeLine)col=col.map(v=>v*0.62);
+      buf[o]=col[0];buf[o+1]=col[1];buf[o+2]=col[2];buf[o+3]=255;
+    }
+  }
+}
+
+/* ================= WebGL renderer ================= */
+const VE=4, HS=0.4, CS=0.2, DS=40;
+const cv=document.getElementById("gl");
+const gl=cv.getContext("webgl",{antialias:false,alpha:false,preserveDrawingBuffer:true});
+const VS=`attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}`;
+const FS=`
+precision highp float;
+uniform vec2 uRes;
+uniform vec3 uCamPos,uCamF,uCamR,uCamU;
+uniform sampler2D uData,uSec;
+uniform float uL,uS,uW,uVE,uTime,uPhase,uProbe,uHS,uCS,uDS,uExag,uDmax,uKp,uAp;
+uniform float uMode,uShowDep,uShowFlow,uUmax,uCmax,uUnorm;
+const float SIG=150.0;
+const vec3 LDIR=vec3(0.24,0.18,0.95);
+float th(float x){float e=exp(2.0*clamp(x,-9.0,9.0));return (e-1.0)/(e+1.0);}
+float hash(vec3 p){p=fract(p*0.1031);p+=dot(p,p.zyx+31.32);return fract((p.x+p.y)*p.z);}
+float noise(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.0-2.0*f);
+  return mix(mix(mix(hash(i),hash(i+vec3(1,0,0)),f.x),mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),
+             mix(mix(hash(i+vec3(0,0,1)),hash(i+vec3(1,0,1)),f.x),mix(hash(i+vec3(0,1,1)),hash(i+vec3(1,1,1)),f.x),f.y),f.z);}
+float fbm(vec3 p){float a=0.5,s=0.0;for(int i=0;i<5;i++){s+=a*noise(p);p=p*2.07+vec3(1.7,9.2,3.1);a*=0.56;}return s*0.92;}
+vec4 row(float x,float r){return texture2D(uData,vec2(clamp(x/uL,0.0,1.0),(r+0.5)/4.0));}
+float hOf(vec4 f){return (f.r*255.0*256.0+f.b*255.0)/65535.0*uHS;}
+float UAt(float x){vec4 d=row(x,3.0);return (d.r*255.0*256.0+d.g*255.0)/65535.0*1.5-0.5;}
+vec3 depTop(float x){return row(x,2.0).rgb;}
+float depMM(float x){vec4 d=row(x,1.0);return (d.r*255.0*256.0+d.g*255.0)/65535.0*uDS;}
+float depH(float x){return uShowDep>0.5?depMM(x)*1e-3*uExag:0.0;}
+vec4 secAt(float x,float mm){return texture2D(uSec,vec2(clamp(x/uL,0.0,1.0),clamp(mm/uDmax,0.0,0.999)));}
+float zbed(float x){return uVE*uS*(uL-x);}
+float zetaOf(vec3 p){return (p.z-zbed(p.x))/uVE-depH(p.x);}
+float cProf(float s){return uAp*exp(-uKp*s)*0.5*(1.0-th((s-1.0)/0.12));}
+float uProf(float s){s=max(s,0.0);float t=(s-0.2)/0.8;float u=s<=0.2?pow(max(s/0.2,1e-6),1.0/6.0):exp(-1.5*t*t);return u/uUnorm;}
+void fields(vec3 p,out float c,out float u,out float hh){
+  vec4 f=row(p.x,0.0);hh=hOf(f);float C=f.g*f.g*uCS;c=0.0;u=0.0;
+  if(hh<0.004||C<2e-4)return;
+  float s=zetaOf(p)/hh;
+  if(s<0.0||s>2.3)return;
+  c=C*cProf(s);u=UAt(p.x)*uProf(s);
+}
+float dens(vec3 p,bool cheap,out float fc){
+  vec4 f=row(p.x,0.0);fc=f.a;
+  float h=hOf(f),C=f.g*f.g*uCS;
+  if(h<0.004||C<2e-4)return 0.0;
+  float s=zetaOf(p)/h;
+  if(s<0.0||s>2.3)return 0.0;
+  vec3 q=vec3((p.x-uPhase)*11.0,p.y*11.0,s*4.2-uTime*0.25);
+  q.x+=1.6*noise(q*0.4+vec3(0.0,0.0,uTime*0.06));
+  q.z+=0.8*noise(q*0.7+vec3(5.2,1.3,uTime*0.04));
+  float n=cheap?0.47+0.35*(noise(q*0.5)-0.5):fbm(q);
+  float se=max(s-1.4*(n-0.47)*smoothstep(0.05,0.9,s),0.0);
+  float c=C*uAp*exp(-uKp*se)*0.5*(1.0-th((se-1.0)/0.07));
+  return c*(cheap?1.0:0.5+n);
+}
+float lightDepth(vec3 p){
+  vec3 l=normalize(LDIR);float s=0.0,fc;
+  for(int i=1;i<=6;i++){s+=dens(p+l*(0.06*float(i)),true,fc);}
+  return s*0.06;
+}
+vec3 viridis(float t){
+  const vec3 c0=vec3(0.2777273272234177,0.005407344544966578,0.3340998053353061);
+  const vec3 c1=vec3(0.1050930431085774,1.404613529898575,1.384590162594685);
+  const vec3 c2=vec3(-0.3308618287255563,0.214847559468213,0.09509516302823659);
+  const vec3 c3=vec3(-4.634230498983486,-5.799100973351585,-19.33244095627987);
+  const vec3 c4=vec3(6.228269936347081,14.17993336680509,56.69055260068105);
+  const vec3 c5=vec3(4.776384997670288,-13.74514537774601,-65.35303263337234);
+  const vec3 c6=vec3(-5.435455855934631,4.645852612178535,26.3124352495832);
+  return c0+t*(c1+t*(c2+t*(c3+t*(c4+t*(c5+t*c6)))));}
+vec3 inferno(float t){
+  const vec3 c0=vec3(0.0002189403691192265,0.001651004631001012,-0.01948089843709184);
+  const vec3 c1=vec3(0.1065134194856116,0.5639564367884091,3.932712388889277);
+  const vec3 c2=vec3(11.60249308247187,-3.972853965665698,-15.9423941062914);
+  const vec3 c3=vec3(-41.70399613139459,17.43639888205313,44.35414519872813);
+  const vec3 c4=vec3(77.162935699427,-33.40235894210092,-81.80730925738993);
+  const vec3 c5=vec3(-71.31942824499214,32.62606426397723,73.20951985803202);
+  const vec3 c6=vec3(25.13112622477341,-12.24266895238567,-23.07032500287172);
+  return c0+t*(c1+t*(c2+t*(c3+t*(c4+t*(c5+t*c6)))));}
+float fval(float c,float u){return uMode<1.5?clamp(c/uCmax,0.0,1.0):clamp(u/uUmax,0.0,1.0);}
+vec3 cmap(float v){return clamp(uMode<1.5?inferno(0.12+0.86*v):viridis(v),0.0,1.0);}
+vec2 slab(float o,float d,float a,float b){
+  if(abs(d)<1e-6)return (o>=a&&o<=b)?vec2(-1e9,1e9):vec2(1e9,-1e9);
+  float t1=(a-o)/d,t2=(b-o)/d;return vec2(min(t1,t2),max(t1,t2));}
+vec3 water(vec3 rd){float k=clamp(rd.z*0.6+0.5,0.0,1.0);return mix(vec3(0.24,0.47,0.63),vec3(0.70,0.87,0.96),k);}
+bool belowDep(vec3 p){float d=depH(p.x);return d>1e-5&&(p.z-zbed(p.x))/uVE<d;}
+const int N=80;
+// march one segment through the current; stops at the deposit surface
+void marchSeg(vec3 ro,vec3 rd,float ta,float tb,inout float T,inout vec3 acc,inout bool hitDep,inout vec3 hp){
+  if(tb<=ta)return;
+  float dt=(tb-ta)/float(N);
+  float t=ta+dt*hash(vec3(gl_FragCoord.xy,uTime+ta));
+  for(int i=0;i<N;i++){
+    vec3 p=ro+rd*t;
+    if(uShowDep>0.5&&belowDep(p)){
+      float a=max(t-dt,ta),b=t;
+      for(int j=0;j<6;j++){float tm=0.5*(a+b);if(belowDep(ro+rd*tm))b=tm;else a=tm;}
+      hp=ro+rd*b;hitDep=true;return;
+    }
+    if(uShowFlow>0.5){
+      if(uMode<0.5){
+        float fc;float d=dens(p,false,fc);
+        if(d>1e-5){
+          float al=1.0-exp(-SIG*d*dt);
+          float Tl=exp(-3.4*SIG*lightDepth(p));
+          vec3 alb=mix(vec3(0.70,0.63,0.52),vec3(0.80,0.79,0.74),fc);
+          acc+=T*al*alb*(vec3(1.32,1.24,1.09)*Tl+vec3(0.055,0.065,0.075));T*=1.0-al;
+        }
+      }else{
+        float c,u,hh;fields(p,c,u,hh);
+        if(c>1e-5){
+          float al=1.0-exp(-38.0*c*dt);
+          acc+=T*al*cmap(fval(c,u))*1.05;T*=1.0-al;
+        }
+      }
+      if(T<0.02)return;
+    }
+    t+=dt;
+  }
+}
+void main(){
+  vec2 uv=(gl_FragCoord.xy-0.5*uRes)/uRes.y;
+  vec3 ro=uCamPos,rd=normalize(uCamF*1.6+uv.x*uCamR+uv.y*uCamU);
+  vec3 col=water(rd);
+  float k=uVE*uS;
+  float tFloor=1e9;
+  if(rd.z<-1e-4){float t=(-0.12-ro.z)/rd.z;if(t>0.0)tFloor=t;}
+  float tBed=1e9;float den=rd.z+k*rd.x;
+  if(abs(den)>1e-6){float t=(k*uL-ro.z-k*ro.x)/den;
+    if(t>0.0){vec3 p=ro+rd*t;if(p.x>=0.0&&p.x<=uL&&abs(p.y)<=uW*0.5+0.04)tBed=t;}}
+  float tHit=min(tBed,tFloor);
+  if(tFloor<tBed&&tFloor<1e8){vec3 p=ro+rd*tFloor;
+    float g=0.5+0.5*noise(vec3(p.xy*3.0,0.0));
+    col=mix(vec3(0.20,0.33,0.40),vec3(0.26,0.40,0.47),g);
+    col=mix(col,water(rd),1.0-exp(-tFloor*0.06));}
+  if(tBed<1e8){vec3 p=ro+rd*tBed;
+    float edge=abs(p.y)-uW*0.5;
+    vec3 bed=vec3(0.36,0.37,0.37)*(0.85+0.3*noise(vec3(p.xy*40.0,1.0)));
+    if(uShowFlow>0.5&&uMode<0.5)bed*=(0.3+0.7*exp(-3.4*SIG*lightDepth(p+vec3(0.0,0.0,0.01))))*1.1;
+    if(edge>-0.02)bed=vec3(0.72,0.74,0.75)*(edge>0.0?0.75:1.0);
+    if(abs(p.x-uProbe)<0.012&&edge<-0.02)bed=mix(bed,vec3(0.84,0.15,0.16),0.85);
+    col=mix(bed,water(rd),1.0-exp(-tBed*0.05));}
+  // glass walls; the near wall shows the deposit's cross-section
+  float tWn=1e9;float wa=0.0;bool secHit=false;vec3 secCol=vec3(0.0);
+  if(abs(rd.y)>1e-5){
+    for(int j=0;j<2;j++){float yw=j==0?-uW*0.5:uW*0.5;float t=(yw-ro.y)/rd.y;
+      if(t>0.0&&t<tHit){vec3 p=ro+rd*t;float zr=(p.z-zbed(p.x))/uVE;
+        if(p.x>=0.0&&p.x<=uL&&zr>=0.0&&zr<=0.35){
+          float lineA=smoothstep(0.006,0.0,abs(zr-0.35))+smoothstep(0.02,0.0,min(p.x,uL-p.x))*0.6;
+          float a=0.07+0.5*lineA;
+          bool near=sign(yw)==sign(ro.y)||abs(ro.y)<uW*0.5;
+          if(near){ if(t<tWn){tWn=t;wa=a;
+              float dh=depH(p.x);
+              if(zr<dh){secHit=true;vec4 s=secAt(p.x,zr/uExag*1000.0);secCol=s.rgb*(0.9+0.1*smoothstep(0.0,dh,zr));}
+              else secHit=false;} }
+          else {col=mix(col,vec3(0.86,0.93,0.97),a);}
+        }}}
+  }
+  vec2 tx=slab(ro.x,rd.x,0.0,uL),ty=slab(ro.y,rd.y,-uW*0.5,uW*0.5);
+  vec2 tw=slab(ro.z+k*ro.x,den,k*uL,k*uL+uVE*0.40);
+  float t0=max(max(tx.x,ty.x),max(tw.x,0.0)),t1=min(min(tx.y,ty.y),min(tw.y,tHit));
+  if(secHit)t1=min(t1,tWn);
+  float T=1.0;vec3 acc=vec3(0.0);
+  bool hitDep=false,sliceOn=false;vec3 hp=vec3(0.0),sliceCol=vec3(0.0);
+  if(t1>t0){
+    // field views: the flume's centre plane (y = 0) is cut open as a coloured slice
+    float tM=1e9;
+    if(uMode>0.5&&uShowFlow>0.5&&abs(rd.y)>1e-5){float t=-ro.y/rd.y;if(t>t0&&t<t1)tM=t;}
+    marchSeg(ro,rd,t0,min(t1,tM),T,acc,hitDep,hp);
+    if(!hitDep&&T>=0.02&&tM<1e8){
+      vec3 p=ro+rd*tM;float c,u,hh;fields(p,c,u,hh);
+      float zr=zetaOf(p);
+      // the profile at the probe, drawn on the slice in white
+      vec3 q=vec3(uProbe,0.0,zbed(uProbe)+uVE*(depH(uProbe)+zr));
+      float c2,u2,h2;fields(q,c2,u2,h2);
+      float glyph=0.0;
+      if(h2>0.004&&zr>=0.0&&zr<2.2*h2){
+        float v=fval(c2,u2),xc=uProbe+v*0.9;
+        vec3 q2=q+vec3(0.0,0.0,uVE*0.004);float c3,u3,h3;fields(q2,c3,u3,h3);
+        float dxdz=(fval(c3,u3)-v)*0.9/(uVE*0.004);
+        float d=abs(p.x-xc)/sqrt(1.0+dxdz*dxdz);
+        float px=0.0022*length(p-ro);
+        glyph=max(smoothstep(1.7*px,0.7*px,d),smoothstep(1.1*px,0.4*px,abs(p.x-uProbe)));
+      }
+      if(c>0.004*uCmax){
+        float v=fval(c,u);sliceCol=cmap(v);
+        float g=abs(fract(v*8.0)-0.5);sliceCol*=g>0.44?0.7:1.0;
+        sliceOn=true;
+      }
+      if(glyph>0.0){sliceCol=mix(sliceOn?sliceCol:col,vec3(1.0),glyph);sliceOn=true;}
+      if(!sliceOn)marchSeg(ro,rd,tM,t1,T,acc,hitDep,hp);
+    }
+    if(hitDep){
+      vec3 dc=depTop(hp.x);
+      float e=0.02;float slope=uVE*(-uS+(depH(hp.x+e)-depH(hp.x-e))/(2.0*e));
+      vec3 n=normalize(vec3(-slope,0.0,1.0));
+      float lam=clamp(dot(n,normalize(LDIR)),0.0,1.0);
+      float sh=(uShowFlow>0.5&&uMode<0.5)?0.35+0.65*exp(-3.4*SIG*lightDepth(hp+vec3(0.0,0.0,0.01))):1.0;
+      float edge=abs(hp.y)-uW*0.5;
+      dc*=(0.45+0.6*lam)*sh;
+      if(edge>-0.015)dc=mix(dc,vec3(0.72,0.74,0.75),0.6);
+      if(abs(hp.x-uProbe)<0.012)dc=mix(dc,vec3(0.84,0.15,0.16),0.8);
+      col=mix(dc,water(rd),1.0-exp(-length(hp-ro)*0.05));
+    }else if(sliceOn)col=sliceCol;
+  }
+  if(secHit)col=secCol;
+  col=col*T+acc;
+  if(tWn<1e8)col=mix(col,vec3(0.86,0.93,0.97),wa*(secHit?0.3:0.8));
+  col=pow(col,vec3(0.95));
+  gl_FragColor=vec4(col,1.0);
+}
+`;
+let prog,uni={},tex,texSec,dataBuf,glOK=!!gl;
+function initGL(){
+  if(!gl)return false;
+  const sh=(type,src)=>{const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);
+    if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){console.error(gl.getShaderInfoLog(s));return null;}return s;};
+  const v=sh(gl.VERTEX_SHADER,VS),f=sh(gl.FRAGMENT_SHADER,FS);if(!v||!f)return false;
+  prog=gl.createProgram();gl.attachShader(prog,v);gl.attachShader(prog,f);gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog,gl.LINK_STATUS)){console.error(gl.getProgramInfoLog(prog));return false;}
+  gl.useProgram(prog);
+  const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+  const loc=gl.getAttribLocation(prog,"p");gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+  ["uRes","uCamPos","uCamF","uCamR","uCamU","uData","uSec","uL","uS","uW","uVE","uTime","uPhase","uProbe","uHS","uCS","uDS","uExag","uDmax","uKp","uAp","uMode","uShowDep","uShowFlow","uUmax","uCmax","uUnorm"].forEach(n=>uni[n]=gl.getUniformLocation(prog,n));
+  const mk=()=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return t;};
+  tex=mk();texSec=mk();
+  return true;
+}
+function uploadData(){
+  const nx=M.nx;if(!dataBuf||dataBuf.length!==nx*16)dataBuf=new Uint8Array(nx*16);
+  const cl=v=>Math.max(0,Math.min(255,Math.round(v*255))), q16=v=>Math.max(0,Math.min(65535,Math.round(v*65535)));
+  for(let i=0;i<nx;i++){
+    let mt=0,mc=0;for(let k=0;k<NK;k++){mt+=M.m[k][i];if(M.cl[k].comp)mc+=M.m[k][i];}
+    const h=M.h[i],C=mt/h,o=i*4,o2=(nx+i)*4,o3=(2*nx+i)*4,o4=(3*nx+i)*4,hq=q16(h/HS),dq=q16(SEC.thick[i]/DS),uq=q16((vel(h,M.q[i])+0.5)/1.5);
+    dataBuf[o]=hq>>8;dataBuf[o+1]=cl(Math.sqrt(Math.max(C,0)/CS));dataBuf[o+2]=hq&255;dataBuf[o+3]=cl(mt>0?mc/mt:0);
+    dataBuf[o2]=dq>>8;dataBuf[o2+1]=dq&255;dataBuf[o2+2]=0;dataBuf[o2+3]=255;
+    dataBuf[o3]=SEC.topCol[i*3];dataBuf[o3+1]=SEC.topCol[i*3+1];dataBuf[o3+2]=SEC.topCol[i*3+2];dataBuf[o3+3]=255;
+    dataBuf[o4]=uq>>8;dataBuf[o4+1]=uq&255;dataBuf[o4+2]=0;dataBuf[o4+3]=255;
+  }
+  gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,nx,4,0,gl.RGBA,gl.UNSIGNED_BYTE,dataBuf);
+  gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,texSec);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,nx,NR,0,gl.RGBA,gl.UNSIGNED_BYTE,SEC.buf);
+  gl.activeTexture(gl.TEXTURE0);
+}
+
+/* camera */
+const cam={yaw:0,pitch:0,dist:0,tx:0,ty:0,tz:0,mode:"overview"};
+const depDisp=x=>V.showDep?interp(SEC.thick,x)*1e-3*V.exag:0;
+function setCam(mode){
+  cam.mode=mode;
+  document.querySelectorAll("#camChips button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.cam===mode));
+  const S=P.slope/100;
+  if(mode==="overview")Object.assign(cam,{yaw:-Math.PI/2-0.75,pitch:0.36,dist:5.0,tx:P.L*0.42,ty:0,tz:VE*S*P.L*0.58+0.15});
+  else if(mode==="side")Object.assign(cam,{yaw:-Math.PI/2,pitch:0.08,dist:7.6,tx:P.L*0.5,ty:0,tz:VE*S*P.L*0.5+0.35});
+  else probeCam();
+  dirty=true;
+}
+function probeCam(){const S=P.slope/100,x=V.probe;
+  Object.assign(cam,{yaw:-Math.PI/2,pitch:0.02,dist:0.85,tx:x,ty:0,tz:VE*(S*(P.L-x)+depDisp(x))+VE*0.065});}
+function camVectors(){
+  const cp=Math.cos(cam.pitch),pos=[cam.tx+cam.dist*cp*Math.cos(cam.yaw),cam.ty+cam.dist*cp*Math.sin(cam.yaw),cam.tz+cam.dist*Math.sin(cam.pitch)];
+  let f=[cam.tx-pos[0],cam.ty-pos[1],cam.tz-pos[2]];const nf=Math.hypot(...f);f=f.map(v=>v/nf);
+  let r=[f[1],-f[0],0];const nr=Math.hypot(...r)||1;r=r.map(v=>v/nr);
+  const u=[r[1]*f[2]-r[2]*f[1],r[2]*f[0]-r[0]*f[2],r[0]*f[1]-r[1]*f[0]];
+  return {pos,f,r,u};
+}
+let dirty=true,rs=1,lastT=0,playing=false;
+function drawGL(){
+  if(!glOK)return;
+  const css=cv.clientWidth,ch=cv.clientHeight,now=performance.now();
+  if(playing&&lastT){const ft=now-lastT;if(ft>55)rs=Math.max(0.45,rs-0.05);else if(ft<28)rs=Math.min(1,rs+0.02);}
+  lastT=playing?now:0;
+  const scale=Math.min(1,760/css)*(Math.round(rs*20)/20);
+  const w=Math.max(2,Math.round(css*scale)),h=Math.max(2,Math.round(ch*scale));
+  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}
+  gl.viewport(0,0,w,h);
+  const c=camVectors();
+  gl.uniform2f(uni.uRes,w,h);gl.uniform3fv(uni.uCamPos,c.pos);gl.uniform3fv(uni.uCamF,c.f);gl.uniform3fv(uni.uCamR,c.r);gl.uniform3fv(uni.uCamU,c.u);
+  gl.uniform1i(uni.uData,0);gl.uniform1i(uni.uSec,1);
+  gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex);gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,texSec);gl.activeTexture(gl.TEXTURE0);
+  gl.uniform1f(uni.uL,P.L);gl.uniform1f(uni.uS,P.slope/100);gl.uniform1f(uni.uW,P.W);gl.uniform1f(uni.uVE,VE);
+  gl.uniform1f(uni.uTime,M.t);gl.uniform1f(uni.uPhase,M.phase);gl.uniform1f(uni.uProbe,V.probe);
+  gl.uniform1f(uni.uHS,HS);gl.uniform1f(uni.uCS,CS);gl.uniform1f(uni.uDS,DS);
+  gl.uniform1f(uni.uMode,{real:0,conc:1,vel:2}[V.fm]);gl.uniform1f(uni.uShowDep,V.showDep?1:0);gl.uniform1f(uni.uShowFlow,V.showFlow?1:0);
+  gl.uniform1f(uni.uUmax,Math.max(M.uRun,1e-3)/U_NORM);gl.uniform1f(uni.uCmax,Math.max(CinTot()*P.r0,1e-5));gl.uniform1f(uni.uUnorm,U_NORM);
+  gl.uniform1f(uni.uExag,V.exag);gl.uniform1f(uni.uDmax,SEC.dmax);gl.uniform1f(uni.uKp,M.kp);gl.uniform1f(uni.uAp,M.ap);
+  gl.drawArrays(gl.TRIANGLES,0,3);
+}
+const ptrs=new Map();let pinch0=0;
+cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+  if(ptrs.size===2){const [a,b]=[...ptrs.values()];pinch0=Math.hypot(a[0]-b[0],a[1]-b[1]);}});
+cv.addEventListener("pointermove",e=>{if(!ptrs.has(e.pointerId))return;const prev=ptrs.get(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+  if(ptrs.size===1){cam.yaw-=(e.clientX-prev[0])*0.008;cam.pitch=Math.max(-0.15,Math.min(1.45,cam.pitch+(e.clientY-prev[1])*0.006));dirty=true;}
+  else if(ptrs.size===2){const [a,b]=[...ptrs.values()];const d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(pinch0>0){cam.dist=Math.max(0.3,Math.min(20,cam.dist*pinch0/d));pinch0=d;dirty=true;}}});
+const up=e=>{ptrs.delete(e.pointerId);pinch0=0;};
+cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);
+cv.addEventListener("wheel",e=>{e.preventDefault();cam.dist=Math.max(0.3,Math.min(20,cam.dist*Math.exp(e.deltaY*0.001)));dirty=true;},{passive:false});
+document.querySelectorAll("#camChips button").forEach(b=>b.onclick=()=>setCam(b.dataset.cam));
+
+/* ================= 2D charts ================= */
+const cssv=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function fit(id){const cvs=document.getElementById(id),d=window.devicePixelRatio||1,w=cvs.clientWidth,h=cvs.clientHeight;
+  if(cvs.width!==Math.round(w*d)||cvs.height!==Math.round(h*d)){cvs.width=Math.round(w*d);cvs.height=Math.round(h*d);}
+  const g=cvs.getContext("2d");g.setTransform(d,0,0,d,0,0);g.clearRect(0,0,w,h);return [g,w,h];}
+function nice(v){const e=Math.pow(10,Math.floor(Math.log10(v))),f=v/e;return (f<=1?1:f<=2?2:f<=5?5:10)*e;}
+const fmt=v=>{const a=Math.abs(v);return a>=100?v.toFixed(0):a>=10?v.toFixed(1):a>=1?v.toFixed(2):+v.toPrecision(2)+"";};
+function axes(g,l,t,w,h,x0,x1,y0,y1,xl,yl,dxT,dyT,opt={}){
+  g.strokeStyle=cssv("--line");g.fillStyle=cssv("--muted");g.lineWidth=1;g.font="12px Barlow,sans-serif";
+  g.strokeRect(l+0.5,t+0.5,w,h);
+  const X=v=>opt.logx?l+(Math.log10(v)-Math.log10(x0))/(Math.log10(x1)-Math.log10(x0))*w:l+(v-x0)/(x1-x0)*w;
+  const Y=v=>opt.logy?t+(Math.log10(y1)-Math.log10(v))/(Math.log10(y1)-Math.log10(y0))*h:t+(y1-v)/(y1-y0)*h;
+  const xt=[],yt=[];
+  if(opt.logx){for(let e=Math.ceil(Math.log10(x0)-1e-9);e<=Math.log10(x1)+1e-9;e++)xt.push(Math.pow(10,e));}
+  else for(let v=Math.ceil(x0/dxT-1e-9)*dxT;v<=x1+1e-9;v+=dxT)xt.push(v);
+  if(opt.logy){for(let e=Math.ceil(Math.log10(y0)-1e-9);e<=Math.log10(y1)+1e-9;e++)yt.push(Math.pow(10,e));}
+  else for(let v=Math.ceil(y0/dyT-1e-9)*dyT;v<=y1+1e-9;v+=dyT)yt.push(v);
+  g.globalAlpha=0.5;g.beginPath();
+  xt.forEach(v=>{const px=Math.round(X(v))+0.5;if(px>l+1&&px<l+w-1){g.moveTo(px,t);g.lineTo(px,t+h);}});
+  yt.forEach(v=>{const py=Math.round(Y(v))+0.5;if(py>t+1&&py<t+h-1){g.moveTo(l,py);g.lineTo(l+w,py);}});
+  g.stroke();g.globalAlpha=1;
+  const dec=st=>opt.logx||!(st>0)?0:Math.max(0,-Math.floor(Math.log10(st)+1e-9));
+  const tf=(v,st,log)=>log?(v>=1?v.toFixed(0):String(+v.toPrecision(1))):v.toFixed(dec(st));
+  g.textAlign="center";g.textBaseline="top";xt.forEach(v=>g.fillText(tf(v,dxT,opt.logx),X(v),t+h+4));
+  g.textAlign="right";g.textBaseline="middle";if(!opt.noY)yt.forEach(v=>g.fillText(tf(v,dyT,opt.logy),l-5,Y(v)));
+  g.textBaseline="alphabetic";g.textAlign="center";g.fillText(xl,l+w/2,t+h+30);
+  g.save();g.translate(12,t+h/2);g.rotate(-Math.PI/2);g.fillText(yl,0,0);g.restore();
+  return {X,Y};
+}
+const BOX=(W,H,r=12)=>({l:52,t:8,w:W-52-r,h:H-50});
+function emptyMsg(g,b,txt){g.fillStyle=cssv("--muted");g.textAlign="center";g.font="14px Barlow,sans-serif";g.fillText(txt,b.l+b.w/2,b.t+b.h/2);}
+function profileTop(pr){return nice(Math.max(2.4*P.h0,2.0*pr.h,0.05)*100);}
+function drawVel(){
+  const [g,W,H]=fit("velChart"),b=BOX(W,H),pr=sampleProbe(),ztop=profileTop(pr);
+  const umax=1.35*Math.max(P.U0,Math.abs(pr.U),...M.ghosts.map(s=>Math.abs(s.U)))/U_NORM*100,xr=nice(Math.max(umax,5));
+  const A=axes(g,b.l,b.t,b.w,b.h,0,xr,0,ztop,"Velocity (cm/s)","Height above bed (cm)",nice(xr/5),nice(ztop/5));
+  const line=(s,alpha,lw)=>{if(s.h<0.003)return;g.globalAlpha=alpha;g.strokeStyle=cssv("--vel");g.lineWidth=lw;g.beginPath();
+    for(let j=0;j<=120;j++){const z=j/120*ztop/100,u=s.U*uShape(z/s.h)*100;const px=A.X(Math.max(0,Math.min(xr,u))),py=A.Y(j/120*ztop);j?g.lineTo(px,py):g.moveTo(px,py);}g.stroke();g.globalAlpha=1;};
+  M.ghosts.forEach((s,k)=>line(s,0.15+0.06*k,1.2));
+  if(pr.h<0.003||pr.Ct<1e-5){emptyMsg(g,b,"No current at the probe yet");return;}
+  line(pr,1,2.4);
+  const py=A.Y(ETA_M*pr.h*100);g.setLineDash([3,3]);g.strokeStyle=cssv("--muted");g.lineWidth=1;g.beginPath();g.moveTo(b.l,py);g.lineTo(b.l+b.w,py);g.stroke();g.setLineDash([]);
+  g.fillStyle=cssv("--muted");g.textAlign="right";g.font="12px Barlow,sans-serif";g.fillText("velocity maximum",b.l+b.w-4,py-4);
+}
+function drawConc(){
+  const [g,W,H]=fit("concChart"),b=BOX(W,H),pr=sampleProbe(),ztop=profileTop(pr);
+  const xr=nice(Math.max(CinTot()*P.r0*100,pr.Ct*P.r0*100,0.1)*1.05);
+  const A=axes(g,b.l,b.t,b.w,b.h,0,xr,0,ztop,"Concentration (vol %)","Height above bed (cm)",nice(xr/5),nice(ztop/5));
+  if(pr.h<0.003||pr.Ct<1e-5){emptyMsg(g,b,"No current at the probe yet");return;}
+  const line=(C,color,lw)=>{g.strokeStyle=color;g.lineWidth=lw;g.beginPath();
+    for(let j=0;j<=120;j++){const e=j/120*ztop/100/pr.h,c=C*M.ap*Math.exp(-M.kp*e)*0.5*(1-Math.tanh((e-1)/0.12))*100;
+      const px=A.X(Math.min(xr,c)),py=A.Y(j/120*ztop);j?g.lineTo(px,py):g.moveTo(px,py);}g.stroke();};
+  line(pr.Cs,cssv("--sili"),2);line(pr.Cc,cssv("--carb"),2);line(pr.Ct,cssv("--total"),2.4);
+}
+function drawFront(){
+  const [g,W,H]=fit("frontChart"),b=BOX(W,H),T=P.t_max;
+  const A=axes(g,b.l,b.t,b.w,b.h,0,T,0,P.L,"Time (s)","Front position (m)",nice(T/6),nice(P.L/4));
+  g.strokeStyle=cssv("--front");g.globalAlpha=0.4;g.setLineDash([4,4]);g.beginPath();g.moveTo(b.l,A.Y(V.probe));g.lineTo(b.l+b.w,A.Y(V.probe));g.stroke();g.setLineDash([]);g.globalAlpha=1;
+  g.lineWidth=2.2;g.beginPath();M.th.forEach((tt,k)=>{const px=A.X(tt),y=A.Y(M.xf[k]);k?g.lineTo(px,y):g.moveTo(px,y);});g.stroke();
+}
+/* deposits */
+const secCanvas=document.createElement("canvas");
+function drawSection(){
+  const [g,W,H]=fit("secChart"),b=BOX(W,H),ymax=nice(SEC.dmax*1.12);
+  const A=axes(g,b.l,b.t,b.w,b.h,0,P.L,0,ymax,"Distance downstream (m)","Deposit thickness (mm)",nice(P.L/8),nice(ymax/5));
+  if(deposited()<=0){emptyMsg(g,b,"No deposit yet. Press Play.");return;}
+  secCanvas.width=M.nx;secCanvas.height=NR;
+  const sg=secCanvas.getContext("2d"),img=sg.createImageData(M.nx,NR);
+  for(let j=0;j<NR;j++){img.data.set(SEC.buf.subarray(j*M.nx*4,(j+1)*M.nx*4),(NR-1-j)*M.nx*4);}
+  sg.putImageData(img,0,0);
+  const top=A.Y(SEC.dmax),bot=A.Y(0);g.imageSmoothingEnabled=false;
+  g.drawImage(secCanvas,b.l,top,b.w,bot-top);
+  g.strokeStyle=cssv("--front");g.lineWidth=1.5;g.beginPath();g.moveTo(A.X(V.probe),b.t);g.lineTo(A.X(V.probe),b.t+b.h);g.stroke();
+  g.fillStyle=cssv("--front");g.font="12px Barlow,sans-serif";g.textAlign="left";g.fillText("probe",A.X(V.probe)+4,b.t+14);
+  // legend
+  const leg=document.getElementById("secLegend");
+  const stretched=CR.cf1>CR.cf0+0.02;
+  if(V.mode==="comp")leg.innerHTML=`<span>Carbonate share ${Math.round((stretched?CR.cf0:0)*100)}% <i class="grad" style="background:linear-gradient(90deg,rgb(${COL_S}),rgb(${COL_MID}),rgb(${COL_C}))"></i> ${Math.round((stretched?CR.cf1:1)*100)}%</span><span>Colours stretched to this deposit's range</span><span>Dark lines: time lines every 7.5 s</span>`;
+  else leg.innerHTML=`<span>Mean grain size ${Math.exp(CR.d0).toFixed(0)} µm <i class="grad" style="background:linear-gradient(90deg,rgb(${FINE}),rgb(${COARSE}))"></i> ${Math.exp(CR.d1).toFixed(0)} µm</span><span>Colours stretched to this deposit's range</span><span>Dark lines: time lines every 7.5 s</span>`;
+  // stats
+  const nx=M.nx,third=[0,0,0];let tot=0,tc=0,xc=0;
+  for(let i=0;i<nx;i++){const v=SEC.thick[i];tot+=v;tc+=SEC.mmC[i];xc+=v*M.x[i];third[Math.min(2,Math.floor(3*i/nx))]+=v;}
+  let maxI=0;for(let i=1;i<nx;i++)if(SEC.thick[i]>SEC.thick[maxI])maxI=i;
+  let runout=0;for(let i=nx-1;i>=0;i--){if(SEC.thick[i]>0.01*SEC.dmax){runout=M.x[i];break;}}
+  const pc=v=>tot>0?Math.round(100*v/tot)+"%":"–";
+  document.getElementById("depStats").innerHTML=
+    `<div><span>Thickest point</span><b>${SEC.thick[maxI].toFixed(2)} mm at ${M.x[maxI].toFixed(1)} m</b></div>`+
+    `<div><span>Deposit centre of mass</span><b>${tot>0?(xc/tot).toFixed(2):"–"} m</b></div>`+
+    `<div><span>Runout (1% of max)</span><b>${runout.toFixed(2)} m</b></div>`+
+    `<div><span>Proximal / medial / distal thirds</span><b>${pc(third[0])} / ${pc(third[1])} / ${pc(third[2])}</b></div>`+
+    `<div><span>Carbonate share of deposit</span><b>${pc(tc)}</b></div>`;
+}
+function drawCore(){
+  const [g,W,H]=fit("coreChart"),i=Math.min(Math.max(Math.round(V.probe/M.dx-0.5),0),M.nx-1),mmf=1e3/(1-P.por);
+  const T=SEC.thick[i],ymax=nice(Math.max(T*1.15,0.05));
+  const l=52,t=8,h=H-50,stripW=34,gap=16,pw=(W-l-stripW-gap-12-14)/2;
+  if(T<=1e-4){g.strokeStyle=cssv("--line");g.strokeRect(l+0.5,t+0.5,W-l-12,h);emptyMsg(g,{l,t,w:W-l-12,h},"No deposit at the probe yet");return;}
+  // strip
+  const Y=v=>t+(ymax-v)/ymax*h;
+  let c=0;const pts=[];
+  M.layers.forEach((L,li)=>{const s=layerStats(li,i);const th=s.v*mmf;if(th<=0)return;
+    const col=depColor(s.cf,s.lnD);g.fillStyle=`rgb(${col.map(Math.round)})`;g.fillRect(l,Y(c+th),stripW,Y(c)-Y(c+th)+0.5);
+    pts.push({z:c+th/2,cf:s.cf,D:Math.exp(s.lnD)});c+=th;});
+  g.strokeStyle=cssv("--line");g.strokeRect(l+0.5,t+0.5,stripW,h);
+  g.fillStyle=cssv("--muted");g.font="12px Barlow,sans-serif";g.textAlign="right";g.textBaseline="middle";
+  const yst=nice(ymax/5),yd=Math.max(0,-Math.floor(Math.log10(yst)+1e-9));for(let v=0;v<=ymax+1e-9;v+=yst)g.fillText(v.toFixed(yd),l-5,Y(v));
+  g.save();g.translate(12,t+h/2);g.rotate(-Math.PI/2);g.textAlign="center";g.fillText("Height in deposit (mm)",0,0);g.restore();
+  // grain size panel
+  const Dmin=Math.exp(M.lnDmin),Dmax=Math.exp(M.lnDmax),d0=Dmin*0.9,d1=Dmax*1.1;
+  const l2=l+stripW+gap;
+  g.textBaseline="alphabetic";
+  const A=axes(g,l2,t,pw,h,Math.max(d0,1),d1,0,ymax,"Mean size (µm)","",nice((d1-d0)/3),nice(ymax/5),{noY:true});
+  g.strokeStyle=cssv("--vel");g.lineWidth=2;g.beginPath();pts.forEach((p,k)=>{const px=A.X(p.D),py=A.Y(p.z);k?g.lineTo(px,py):g.moveTo(px,py);});g.stroke();
+  const l3=l2+pw+14;
+  const B=axes(g,l3,t,pw,h,0,100,0,ymax,"Carbonate (%)","",25,nice(ymax/5),{noY:true});
+  g.strokeStyle=cssv("--carb");g.lineWidth=2;g.beginPath();pts.forEach((p,k)=>{const px=B.X(p.cf*100),py=B.Y(p.z);k?g.lineTo(px,py):g.moveTo(px,py);});g.stroke();
+}
+function drawDist(){
+  const [g,W,H]=fit("distChart"),b=BOX(W,H,52),ymax=nice(Math.max(SEC.dmax*1.12,0.01));
+  const A=axes(g,b.l,b.t,b.w,b.h,0,P.L,0,ymax,"Distance downstream (m)","Thickness (mm)",nice(P.L/4),nice(ymax/5));
+  if(deposited()<=0){emptyMsg(g,b,"No deposit yet");return;}
+  const nx=M.nx;
+  const band=(lo,hi,col)=>{g.fillStyle=col;g.beginPath();g.moveTo(A.X(M.x[0]),A.Y(lo(0)));
+    for(let i=0;i<nx;i++)g.lineTo(A.X(M.x[i]),A.Y(hi(i)));for(let i=nx-1;i>=0;i--)g.lineTo(A.X(M.x[i]),A.Y(lo(i)));g.closePath();g.fill();};
+  band(()=>0,i=>SEC.mmS[i],cssv("--sili"));band(i=>SEC.mmS[i],i=>SEC.thick[i],cssv("--carb"));
+  // mean grain size on right axis
+  const Dmin=Math.exp(M.lnDmin)*0.9,Dmax=Math.exp(M.lnDmax)*1.1,YD=v=>b.t+(Dmax-v)/(Dmax-Dmin)*b.h;
+  g.strokeStyle=cssv("--vel");g.lineWidth=2;g.beginPath();let st=false;
+  for(let i=0;i<nx;i++){if(!(SEC.thick[i]>0.005*SEC.dmax)){continue;}const px=A.X(M.x[i]),py=YD(SEC.meanD[i]);st?g.lineTo(px,py):g.moveTo(px,py);st=true;}g.stroke();
+  g.fillStyle=cssv("--vel");g.textAlign="left";g.textBaseline="middle";g.font="12px Barlow,sans-serif";
+  const dt=nice((Dmax-Dmin)/4);for(let v=Math.ceil(Dmin/dt)*dt;v<=Dmax;v+=dt)g.fillText(v.toFixed(dt>=1?0:1),b.l+b.w+5,YD(v));
+  g.save();g.translate(W-8,b.t+b.h/2);g.rotate(Math.PI/2);g.textAlign="center";g.fillText("Mean grain size (µm)",0,0);g.restore();
+  g.strokeStyle=cssv("--front");g.lineWidth=1.5;g.beginPath();g.moveTo(A.X(V.probe),b.t);g.lineTo(A.X(V.probe),b.t+b.h);g.stroke();
+}
+/* physics */
+function arrow(x1,y1,x2,y2,color,w=3,head=9){
+  const a=Math.atan2(y2-y1,x2-x1),hx=x2-head*Math.cos(a),hy=y2-head*Math.sin(a);
+  return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${hx.toFixed(1)}" y2="${hy.toFixed(1)}" stroke="${color}" stroke-width="${w.toFixed(1)}" stroke-linecap="round"/>`+
+   `<polygon points="${x2.toFixed(1)},${y2.toFixed(1)} ${(hx-head*0.5*Math.sin(a)).toFixed(1)},${(hy+head*0.5*Math.cos(a)).toFixed(1)} ${(hx+head*0.5*Math.sin(a)).toFixed(1)},${(hy-head*0.5*Math.cos(a)).toFixed(1)}" fill="${color}"/>`;
+}
+const sci=v=>{if(v===0||!isFinite(v))return "0";const a=Math.abs(v);if(a>=0.01&&a<1000)return fmt(v);const e=Math.floor(Math.log10(a));return (v/Math.pow(10,e)).toFixed(2)+"×10<tspan dy='-6' font-size='10'>"+e+"</tspan><tspan dy='6'></tspan>";};
+const sciH=v=>{if(v===0||!isFinite(v))return "0";const a=Math.abs(v);if(a>=0.01&&a<1000)return fmt(v);const e=Math.floor(Math.log10(a));return (v/Math.pow(10,e)).toFixed(2)+"×10<sup>"+e+"</sup>";};
+function drawPhysics(){
+  const ph=physics(), ink=cssv("--ink"),mut=cssv("--muted"),svg=document.getElementById("physSvg");
+  const mom=[["Gravity drive",ph.grav,"#c0392b"],["Pressure gradient",ph.press,"#8e44ad"],["Entrainment drag",ph.entr,cssv("--water")],["Bed friction",ph.fric,"#1d2b33"]];
+  const mmax=Math.max(...mom.map(m=>Math.abs(m[1])),1e-12);
+  let s=`<defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c7e5f4"/><stop offset="1" stop-color="#7fb6d6"/></linearGradient></defs>`;
+  s+=`<rect x="0" y="0" width="520" height="300" fill="url(#wg)" rx="8"/>`;
+  s+=`<g transform="rotate(7 260 170)">`;
+  const bedY=200,depY=188,topY=100;
+  s+=`<rect x="-60" y="${bedY}" width="660" height="160" fill="#5d6264"/>`;
+  s+=`<rect x="-60" y="${depY}" width="660" height="12" fill="${cssv("--sili")}"/><rect x="-60" y="${depY}" width="660" height="5" fill="${cssv("--carb")}"/>`;
+  let path=`M -60 ${depY} L -60 ${topY+8}`;for(let x=-60;x<=580;x+=20){path+=` Q ${x+10} ${topY-6+((x/20+3)%2)*8} ${x+20} ${topY+4+((x/20+3)%3)*3}`;}
+  s+=`<path d="${path} L 600 ${depY} Z" fill="#dacdb3"/>`;
+  if(ph.active){
+    for(let j=1;j<=8;j++){const e=j/8*1.3,z=depY-e/1.3*(depY-topY-4),u=uShape(e)/uShape(ETA_M);if(u<0.04)continue;s+=arrow(20,z,20+u*60,z,cssv("--vel"),1.6,6);}
+    s+=`<text x="16" y="${topY-12}" font-size="13" fill="#14232c">u(z)</text>`;
+    mom.forEach(([name,v,color],k)=>{
+      const len=16+150*Math.abs(v)/mmax,y=[122,142,162,180][k],x0=250-len/2;
+      s+=v>=0?arrow(x0,y,x0+len,y,color,3.2):arrow(x0+len,y,x0,y,color,3.2);
+      s+=`<text x="${x0+len+8}" y="${y+4}" font-size="13" fill="#14232c">${name}</text>`;
+    });
+    const ewR=ph.ew*Math.abs(ph.U);
+    [420,455,490].forEach(x=>{s+=arrow(x,topY-48,x,topY-6,cssv("--water"),Math.min(1.5+ewR*2500,6),8);});
+    s+=`<text x="400" y="${topY-54}" font-size="13" fill="#14232c">Water entrained</text>`;
+    const smax=Math.max(ph.depS,ph.depC,1e-12);
+    [[ph.depS,cssv("--sili"),104],[ph.depC,cssv("--carb"),134]].forEach(([v,c,x])=>{s+=arrow(x,topY+24,x,depY-2,c,1.5+6*v/smax,9);});
+    s+=`<text x="96" y="${topY+16}" font-size="13" fill="#14232c">Settling</text>`;
+  }
+  s+=`</g>`;
+  s+=ph.active?`<text x="14" y="24" font-size="13" fill="#14232c">Downstream →   Fr ${fmt(ph.Fr)} (${ph.Fr>1?"supercritical":"subcritical"})   Ri ${fmt(ph.Ri)}   Re ${Math.round(ph.Re).toLocaleString()}</text>`
+    :`<text x="260" y="40" text-anchor="middle" font-size="15" fill="#14232c">No current at the probe: move the probe or press Play</text>`;
+  svg.innerHTML=s;
+  // equation list
+  const rows2=[
+    ["Excess density","Δρ/ρ = Σ R<sub>i</sub>C<sub>i</sub>,  R<sub>i</sub> = (ρ<sub>s,i</sub> − ρ<sub>w</sub>)/ρ<sub>w</sub>",`${(ph.B*100).toFixed(3)}%`,`reduced gravity g′ = ${fmt(ph.gp)} m/s²`],
+    ["Gravity drive (downslope)","g′ h S",`${sciH(ph.grav)} m²/s²`,`h = ${(ph.h*100).toFixed(1)} cm, S = ${P.slope}%`],
+    ["Pressure gradient","−∂(½ g′h²)/∂x",`${sciH(ph.press)} m²/s²`,ph.press>=0?"pushes downstream":"holds the flow back"],
+    ["Bed friction","−C<sub>d</sub> U|U|",`${sciH(ph.fric)} m²/s²`,`U = ${(ph.U*100).toFixed(1)} cm/s, C<sub>d</sub> = ${P.Cd}`],
+    ["Water entrainment","e<sub>w</sub> = a/√(1 + 718 Ri<sup>2.4</sup>),  Ri = g′h/U²",`${(ph.ew*Math.abs(ph.U)*1000).toFixed(2)} mm/s`,`e<sub>w</sub> = ${fmt(ph.ew)}, Ri = ${fmt(ph.Ri)}; slows the layer by ${sciH(ph.entr)} m²/s²`],
+    ["Densimetric Froude number","Fr = U/√(g′h)",fmt(ph.Fr),ph.Fr>1?"supercritical: thins and accelerates":"subcritical: thickens, near a hydraulic jump if it was supercritical"],
+    ["Settling velocity (median sizes)","w<sub>s</sub> = R g D² / (C<sub>1</sub>ν + √(0.75 C<sub>2</sub> R g D³))",`${(M.ws0[1]*1000).toFixed(2)} / ${(M.ws0[4]*1000).toFixed(2)} mm/s`,`siliciclastic / carbonate; ν = ${(M.nu*1e6).toFixed(2)} mm²/s at ${P.T_w} °C`],
+    ["Hindered settling","× (1 − C)<sup>4.65</sup>",`× ${ph.hind.toFixed(3)}`,`C = ${(ph.pr.Ct*100).toFixed(2)} vol %`],
+    ["Deposition rate","Σ r<sub>0</sub> w<sub>s,i</sub> C<sub>i</sub> / (1 − λ)",`${((ph.depS+ph.depC)/(1-P.por)*6e4).toFixed(3)} mm/min`,`siliciclastic ${(ph.depS/(1-P.por)*6e4).toFixed(3)}, carbonate ${(ph.depC/(1-P.por)*6e4).toFixed(3)} mm/min`],
+    ["Rouse number","P = w<sub>s</sub> / (κ u<sub>*</sub>),  u<sub>*</sub> = √C<sub>d</sub> |U|",`${fmt(ph.rouse[0])} / ${fmt(ph.rouse[1])}`,ph.rouse.map((r,k)=>(k?"carbonate ":"siliciclastic ")+(r<0.8?"fully suspended":r<2.5?"suspended, settling out":"near-bed, deposits fast")).join("; ")],
+    ["Flow Reynolds number","Re = U h / ν",Math.round(ph.Re).toLocaleString(),ph.Re>2000?"turbulent":"laminar to transitional"],
+  ];
+  document.getElementById("eqList").innerHTML=rows2.map(r=>`<div><span class="what">${r[0]}</span><span class="v">${ph.active||k0(r)?r[2]:"–"}<small>${ph.active||k0(r)?r[3]:""}</small></span><span class="f">${r[1]}</span></div>`).join("");
+  drawWs();
+}
+const k0=r=>r[0].startsWith("Settling");
+function drawWs(){
+  const [g,W,H]=fit("wsChart"),b=BOX(W,H);
+  const A=axes(g,b.l,b.t,b.w,b.h,10,1000,0.001,1000,"Grain diameter (µm)","Settling velocity (mm/s)",0,0,{logx:true,logy:true});
+  const curve=(fn,color,dash)=>{g.strokeStyle=color;g.lineWidth=2;g.setLineDash(dash||[]);g.beginPath();
+    for(let j=0;j<=80;j++){const D=10*Math.pow(100,j/80),w=Math.max(fn(D)*1000,1e-3);const px=A.X(D),py=A.Y(Math.min(w,1000));j?g.lineTo(px,py):g.moveTo(px,py);}g.stroke();g.setLineDash([]);};
+  const sS=SH_S[P.shape_s],sC=SH_C[P.shape_c];
+  curve(D=>wsStokes(D,P.rho_s,M.nu,P.rho_a),cssv("--muted"),[4,4]);
+  curve(D=>wsFC(D,P.rho_s,sS[0],sS[1],M.nu,P.rho_a),cssv("--sili"));
+  curve(D=>wsFC(D,P.rho_c,sC[0],sC[1],M.nu,P.rho_a),cssv("--carb"));
+  M.cl.forEach((c,k)=>{g.fillStyle=c.comp?cssv("--carb"):cssv("--sili");g.strokeStyle=cssv("--panel");g.lineWidth=1.5;g.beginPath();g.arc(A.X(c.D),A.Y(Math.max(M.ws0[k]*1000,1e-3)),5,0,7);g.fill();g.stroke();});
+  g.fillStyle=cssv("--muted");g.font="12px Barlow,sans-serif";g.textAlign="left";g.fillText("dots: the six grain classes in this run",b.l+6,b.t+14);
+}
+function drawBud(){
+  const [g,W,H]=fit("budChart"),b=BOX(W,H);
+  const A=axes(g,b.l,b.t,b.w,b.h,0,P.t_max,0,100,"Time (s)","Share of injected sediment (%)",nice(P.t_max/6),20);
+  [["s","--water"],["d","--sili"],["e","--front"]].forEach(([key,c])=>{g.strokeStyle=cssv(c);g.lineWidth=2.2;g.beginPath();
+    M.bud.forEach((p,k)=>{const px=A.X(p.t),py=A.Y(Math.min(p[key],100));k?g.lineTo(px,py):g.moveTo(px,py);});g.stroke();});
+}
+const VIR=[[0.2777273272234177,0.005407344544966578,0.3340998053353061],[0.1050930431085774,1.404613529898575,1.384590162594685],[-0.3308618287255563,0.214847559468213,0.09509516302823659],[-4.634230498983486,-5.799100973351585,-19.33244095627987],[6.228269936347081,14.17993336680509,56.69055260068105],[4.776384997670288,-13.74514537774601,-65.35303263337234],[-5.435455855934631,4.645852612178535,26.3124352495832]];
+const INF=[[0.0002189403691192265,0.001651004631001012,-0.01948089843709184],[0.1065134194856116,0.5639564367884091,3.932712388889277],[11.60249308247187,-3.972853965665698,-15.9423941062914],[-41.70399613139459,17.43639888205313,44.35414519872813],[77.162935699427,-33.40235894210092,-81.80730925738993],[-71.31942824499214,32.62606426397723,73.20951985803202],[25.13112622477341,-12.24266895238567,-23.07032500287172]];
+const poly=(c,t)=>[0,1,2].map(j=>{let v=c[6][j];for(let k=5;k>=0;k--)v=c[k][j]+t*v;return Math.round(Math.min(Math.max(v,0),1)*255);});
+function colorbar(){
+  const cb=document.getElementById("cbar");
+  if(V.fm==="real"||!V.showFlow){cb.hidden=true;return;}
+  cb.hidden=false;
+  const stops=[];for(let j=0;j<=8;j++){const t=j/8;stops.push(`rgb(${V.fm==="conc"?poly(INF,0.12+0.86*t):poly(VIR,t)}) ${t*100}%`);}
+  document.getElementById("cbar-grad").style.background=`linear-gradient(90deg,${stops.join(",")})`;
+  const hi=V.fm==="conc"?(CinTot()*P.r0*100).toFixed(1)+" vol %":(M.uRun/U_NORM*100).toFixed(0)+" cm/s";
+  document.getElementById("cbar-lo").textContent="0";document.getElementById("cbar-hi").textContent=hi;
+  document.getElementById("cbar-name").textContent=V.fm==="conc"?"concentration · white line: profile at probe":"velocity · white line: profile at probe";
+}
+function readout(){
+  const $=id=>document.getElementById(id),inj=Math.max(M.inj,1e-12),pr=sampleProbe();
+  $("r-t").textContent=M.t.toFixed(1)+" s";$("r-x").textContent=M.front.toFixed(2)+" m";
+  $("r-u").textContent="Front speed "+(frontSpeed()*100).toFixed(1)+" cm/s";
+  $("r-h").textContent="Thickness at probe "+(pr.Ct>1e-4?pr.h*100:0).toFixed(1)+" cm";
+  $("r-d").textContent=Math.round(100*deposited()/inj)+"%";$("r-b").textContent=Math.round(100*M.exit/inj)+"%";
+  $("hint").textContent=`Vertical ×${VE}`+(V.showDep?`, deposit ×${VE*V.exag}`:"");
+  colorbar();
+}
+function drawCharts(){
+  buildSection();readout();
+  drawVel();drawConc();drawFront();drawBud();
+  drawSection();drawCore();drawDist();
+  drawPhysics();
+}
+const chipGroup=(id,attr,fn)=>document.querySelectorAll(`#${id} button`).forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(`#${id} button`).forEach(x=>x.setAttribute("aria-pressed",x===b));fn(b.dataset[attr]);});
+chipGroup("depChips","mode",v=>{V.mode=v;refresh();});
+chipGroup("flowChips","fm",v=>{V.fm=v;refresh();});
+document.getElementById("showFlow").onchange=e=>{V.showFlow=e.target.checked;refresh();};
+document.getElementById("showDep").onchange=e=>{V.showDep=e.target.checked;refresh();};
+
+/* ================= controls & loop ================= */
+const playBtn=document.getElementById("play");
+function setPlaying(v){playing=v;playBtn.textContent=v?"Pause":"Play";}
+function refresh(){drawCharts();if(glOK)uploadData();if(cam.mode==="probe")probeCam();dirty=true;}
+function reset(){makeModel();setPlaying(false);refresh();}
+playBtn.onclick=()=>{if(M.done)reset();setPlaying(!playing);};
+document.getElementById("reset").onclick=reset;
+
+const DISPLAY=new Set(["probe","speed","exag","por"]);
+function build(host,list){
+  const el=document.getElementById(host);
+  list.forEach(([key,label,unit,min,max,stepv,dec,extra])=>{
+    const obj=key in V?V:P,val=obj[key];
+    const d=document.createElement("div");d.className="ctl";
+    const show=v=>(+v).toFixed(dec)+(unit?" "+unit:"")+(extra?extra(+v):"");
+    d.innerHTML=`<label for="${key}">${label}<output>${show(val)}</output></label>
+      <input type="range" id="${key}" min="${min}" max="${max}" step="${stepv}" value="${val}">`;
+    el.appendChild(d);
+    const inp=d.querySelector("input"),out=d.querySelector("output");
+    inp.addEventListener("input",()=>{out.textContent=show(inp.value);
+      if(DISPLAY.has(key)){obj[key]=+inp.value;if(key==="probe")M.ghosts=[];if(key!=="speed")refresh();}});
+    if(!DISPLAY.has(key))inp.addEventListener("change",()=>{P[key]=+inp.value;reset();});
+  });
+}
+build("ctl-probe",[["probe","Probe position","m",0.2,7.8,0.1,1]]);
+build("ctl-speed",[["speed","Playback speed","sim s/frame",0.05,1,0.05,2]]);
+build("ctl-sili",[["D_s","Median grain size","µm",10,400,5,0],["rho_s","Grain density","kg/m³",2500,2900,10,0]]);
+build("ctl-carb",[["D_c","Median grain size","µm",10,400,5,0],["rho_c","Grain density","kg/m³",1500,2850,25,0]]);
+build("ctl-mix",[["fc","Carbonate fraction","%",0,100,5,0],["sort","Sorting σg","",1,2.5,0.1,1,v=>v<1.3?" (well sorted)":v<1.9?" (moderate)":" (poor)"],["C0","Inflow concentration","vol %",0.5,15,0.5,1]]);
+build("ctl-fluid",[["T_w","Water temperature","°C",0,40,1,0,v=>` (ν ${(nuWater(v)*1e6).toFixed(2)} mm²/s)`],["rho_a","Ambient water density","kg/m³",995,1030,1,0,v=>v>=1020?" (seawater)":v<=1001?" (fresh)":" (brackish)"]]);
+build("ctl-flow",[["slope","Bed slope","%",0,15,0.5,1],["U0","Inflow velocity","m/s",0.05,0.5,0.01,2],["h0","Inflow thickness","m",0.02,0.2,0.01,2],["T_in","Inflow duration","s",2,60,1,0]]);
+build("ctl-coef",[["Cd","Bed drag coefficient Cd","",0.001,0.02,0.0005,4],["ea","Entrainment coefficient a","",0,0.15,0.005,3],["r0","Near-bed concentration ratio r0","",1,3,0.1,1]]);
+build("ctl-disp",[["exag","Deposit exaggeration","×",1,40,1,0],["por","Deposit porosity λ","",0.25,0.6,0.01,2]]);
+[["shape_s",SH_S],["shape_c",SH_C]].forEach(([id,set])=>{const sel=document.getElementById(id);
+  Object.keys(set).forEach(k=>{const o=document.createElement("option");o.textContent=k;o.value=k;if(k===P[id])o.selected=true;sel.appendChild(o);});
+  sel.onchange=()=>{P[id]=sel.value;reset();};});
+
+function frame(){
+  if(playing){
+    if(M.done){setPlaying(false);playBtn.textContent="Run complete";}
+    else{advance(V.speed);refresh();}
+  }
+  if(dirty){drawGL();dirty=false;}
+  requestAnimationFrame(frame);
+}
+glOK=initGL();
+if(!glOK){cv.style.display="none";document.getElementById("nogl").style.display="block";}
+window.addEventListener("resize",()=>{dirty=true;drawCharts();});
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",()=>drawCharts());
+makeModel();setCam("overview");reset();
+advance(12);refresh();
+requestAnimationFrame(frame);
+window.__gfs={get M(){return M;},advance,setCam,drawGL,refresh,V,P,reset};
+})();
+</script>
+</body>
+</html>

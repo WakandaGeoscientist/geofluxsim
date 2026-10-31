@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use GeoFluxSim, please cite it as below."
+title: "GeoFluxSim: a browser-based turbidity-current simulator"
+type: software
+version: 1.0.0
+date-released: 2026-10-31
+url: "https://geofluxsim.netlify.app"
+repository-code: "https://github.com/YOUR-GITHUB-USERNAME/geofluxsim"
+license: MIT
+authors:
+  - family-names: Nworie
+    given-names: David Chibuzor
+    # orcid: "https://orcid.org/0000-0000-0000-0000"
+keywords:
+  - turbidity currents
+  - sediment gravity flows
+  - mixed carbonate-siliciclastic systems
+  - sedimentology
+  - simulation
+  - education
