@@ -2,6 +2,8 @@
 
 **A turbidity-current lab you can open in your browser.**
 
+GeoFluxSim was built with the assistance of Claude, an AI model by Anthropic, which helped write the code, documentation and promotional video. The physics, requires further revision and tested the results. The equations come from the published literature, but the model is simplified and not yet validated against experiments, so please treat it as a teaching and exploration tool and let me know if anything looks wrong.
+
 GeoFluxSim runs mixed carbonate–siliciclastic turbidity currents down a 3D flume. You can watch the flow, see velocity and concentration inside it, read the layered deposit it leaves behind, and follow every governing equation live as you change the sediment, the water and the flow.
 
 **Try it:** https://geofluxsim.netlify.app
