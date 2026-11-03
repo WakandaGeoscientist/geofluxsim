@@ -6,10 +6,12 @@ GeoFluxSim was built with the assistance of Claude, an AI model by Anthropic, wh
 
 GeoFluxSim runs mixed carbonate–siliciclastic turbidity currents down a 3D flume. You can watch the flow, see velocity and concentration inside it, read the layered deposit it leaves behind, and follow every governing equation live as you change the sediment, the water and the flow.
 
-**Try it:** https://geofluxsim.netlify.app
-**Project page:** https://davidnworie.wordpress.com/geofluxsim/
+**Try it:** 
+(https://wakandageoscientist.github.io/geofluxsim/)
 
-![GeoFluxSim: a turbidity current in the 3D flume](preview.jpg)
+**Project page:** https://davidnworie.com/geofluxsim/
+
+![GeoFluxSim: a turbidity current flume lab](preview.jpg)
 
 ## Why it exists
 
@@ -43,7 +45,9 @@ Turbidity currents are underwater avalanches of sediment. They shape the deep se
 
 ## Run it
 
-**In the browser:** open https://geofluxsim.netlify.app. It needs a browser with WebGL (current Chrome, Edge, Firefox or Safari, including phones) and works best on a laptop or desktop.
+**In the browser:** [open](https://wakandageoscientist.github.io/geofluxsim/). 
+
+It needs a browser with WebGL (current Chrome, Edge, Firefox or Safari, including phones) and works best on a laptop or desktop.
 
 **Locally:** download `index.html` and double-click it. No server, build step or installation is needed.
 
