@@ -1,3 +1,24 @@
+2026-11 update
+
+Added
+
+	•	Study builder: vary one or two settings, compare setups, or test which settings matter most; choose the results to show, including vertical profiles and grain-size distributions; export as CSV.
+	•	Outcrop and synthetic seismic views with AVO analysis (angle gathers, AVO curves, intercept–gradient crossplot, brine/oil/gas).
+	•	"How the flow built the deposit": bypass, erosion and deposition zones against the Froude number.
+	•	Mud types (kaolinite, illite, chlorite, bentonite, carbonate mud, silt-like), several per run, with cohesion after Baker et al. (2017, 2025).
+	•	Deposit photo reader and hypothesis testing; comparison videos; model card.
+
+Changed
+
+	•	Default experiment: a steep upper slope easing to a flat basin floor, so the current bypasses the slope and builds a lobe.
+	•	Tidier interface: foldable sections, a shortcut row on each tab, a slimmer run bar, Simple and Advanced levels.
+	•	Share links point to whichever website hosts the app.
+
+Fixed
+
+	•	Compare runs: the "differs by" column for pinned runs.
+
+
 # Changelog
 
 All notable changes to GeoFluxSim. Versions follow MAJOR.MINOR.PATCH:
